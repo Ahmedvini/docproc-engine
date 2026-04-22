@@ -51,6 +51,31 @@ This project now includes a built-in HTTP server mode and Docker deployment file
 mvn -DskipTests exec:java -Dexec.args="--server"
 ```
 
+### Flask Google-Docs-Style UI (optional)
+
+Run the Java engine first:
+
+```bash
+mvn -DskipTests exec:java -Dexec.args="--server"
+```
+
+Then in a second terminal:
+
+```bash
+cd flask_ui
+pip install -r requirements.txt
+python app.py
+```
+
+Open `http://127.0.0.1:5000`.
+
+Environment variables for Flask UI:
+
+- `DOCPROC_ENGINE_URL` (default: `http://127.0.0.1:8080`)
+- `DOCPROC_SWING_COMMAND` (default: `mvn exec:java -Dexec.args=--gui`)
+
+The "Switch to Swing UI" button is intended for local desktop use. It is not expected to work on headless cloud hosts.
+
 Server endpoints:
 
 - `GET /health`
