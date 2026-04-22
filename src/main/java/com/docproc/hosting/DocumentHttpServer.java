@@ -40,21 +40,74 @@ public class DocumentHttpServer {
     private class RootHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
+                        Document document = manager.getCurrentDocument();
+                        if (document == null) {
+                                write(exchange, 404, "<html><body><h1>No active document</h1></body></html>", "text/html");
+                                return;
+                        }
+
+                        WordCountVisitor wordCountVisitor = new WordCountVisitor();
+                        document.accept(wordCountVisitor);
+
+                        SpellCheckVisitor spellCheckVisitor = new SpellCheckVisitor();
+                        document.accept(spellCheckVisitor);
+
+                        String unknownWords = spellCheckVisitor.getUnknownWords().isEmpty()
+                                ? "None"
+                                : spellCheckVisitor.getUnknownWords().stream().collect(Collectors.joining(", "));
+
             String body = """
                 <html>
-                  <head><title>Smart Document Editor</title></head>
+                                    <head>
+                                        <title>Smart Document Editor</title>
+                                        <style>
+                                            body { font-family: Georgia, serif; margin: 2rem; background: #f7f5ef; color: #1f2933; }
+                                            h1 { margin-bottom: 0.4rem; }
+                                            .muted { color: #52606d; margin-top: 0; }
+                                            .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin: 1.2rem 0; }
+                                            .card { background: #ffffff; border: 1px solid #d9e2ec; border-radius: 10px; padding: 1rem; }
+                                            pre { white-space: pre-wrap; background: #fff; border: 1px solid #d9e2ec; border-radius: 10px; padding: 1rem; }
+                                            a { color: #0b69a3; text-decoration: none; }
+                                            a:hover { text-decoration: underline; }
+                                        </style>
+                                    </head>
                   <body>
                     <h1>Smart Document Editor</h1>
-                    <p>Available endpoints:</p>
+                                        <p class="muted">Homepage dashboard with preview and quick metrics.</p>
+
+                                        <div class="grid">
+                                            <div class="card">
+                                                <h3>Title</h3>
+                                                <p>%s</p>
+                                            </div>
+                                            <div class="card">
+                                                <h3>Word Count</h3>
+                                                <p>%d</p>
+                                            </div>
+                                            <div class="card">
+                                                <h3>Unknown Words</h3>
+                                                <p>%s</p>
+                                            </div>
+                                        </div>
+
+                                        <h3>Document Preview</h3>
+                                        <pre>%s</pre>
+
+                                        <h3>Raw Endpoints</h3>
                     <ul>
-                      <li>/health</li>
-                      <li>/document</li>
-                      <li>/word-count</li>
-                      <li>/spell-check</li>
+                                            <li><a href="/health">/health</a></li>
+                                            <li><a href="/document">/document</a></li>
+                                            <li><a href="/word-count">/word-count</a></li>
+                                            <li><a href="/spell-check">/spell-check</a></li>
                     </ul>
                   </body>
                 </html>
-                """;
+                                """.formatted(
+                                escapeHtml(document.getTitle()),
+                                wordCountVisitor.getCount(),
+                                escapeHtml(unknownWords),
+                                escapeHtml(document.render())
+                        );
             write(exchange, 200, body, "text/html");
         }
     }
@@ -109,5 +162,14 @@ public class DocumentHttpServer {
         try (OutputStream output = exchange.getResponseBody()) {
             output.write(bytes);
         }
+    }
+
+    private String escapeHtml(String value) {
+        return value
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace("\"", "&quot;")
+            .replace("'", "&#39;");
     }
 }
