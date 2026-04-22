@@ -53,6 +53,23 @@ mvn -DskipTests exec:java -Dexec.args="--server"
 
 ### Flask Google-Docs-Style UI (optional)
 
+One command startup (recommended):
+
+```bash
+./run-local.sh
+```
+
+Optional custom ports:
+
+```bash
+JAVA_PORT=8081 FLASK_PORT=5001 ./run-local.sh
+```
+
+This starts both services together:
+
+- Java engine on `JAVA_PORT` (default `8080`)
+- Flask UI on `FLASK_PORT` (default ad`5000`)
+
 Run the Java engine first:
 
 ```bash

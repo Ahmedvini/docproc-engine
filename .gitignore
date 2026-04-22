@@ -1,0 +1,25 @@
+# Java build outputs
+/classes/
+/target/
+*.class
+
+# Runtime artifacts
+/exports/
+/autosave/
+*.log
+
+# Local temporary files
+.java_sources.tmp
+
+# Python virtual environments and caches
+/flask_ui/.venv/
+/flask_ui/__pycache__/
+/flask_ui/.pytest_cache/
+/flask_ui/*.pyc
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.iml
