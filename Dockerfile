@@ -8,4 +8,4 @@ FROM eclipse-temurin:17-jre
 WORKDIR /app
 COPY --from=build /app/target/classes ./classes
 EXPOSE 8080
-CMD ["java", "-cp", "classes", "com.docproc.app.Main", "--server"]
+CMD ["java", "--add-modules", "jdk.httpserver", "-cp", "classes", "com.docproc.app.Main", "--server"]

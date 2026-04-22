@@ -46,6 +46,19 @@ public class Main {
             return;
         }
 
+        if (serverMode) {
+            Document serverDocument = new DocumentBuilder(new DefaultDocumentElementFactory())
+                .start("Smart Document Editor")
+                .addHeader("Hosted Mode")
+                .addSection("Overview")
+                .addParagraph("Service is running and ready to process documents.", normal)
+                .build();
+            manager.setCurrentDocument(serverDocument);
+            int port = Integer.parseInt(System.getenv().getOrDefault("PORT", "8080"));
+            new DocumentHttpServer(manager).start(port);
+            return;
+        }
+
         Document document = new DocumentBuilder(new DefaultDocumentElementFactory())
             .start("Smart Document Editor")
             .addHeader("Sample Header")
@@ -101,10 +114,6 @@ public class Main {
         Document restored = vcs.checkout(1);
         System.out.println("Restored version title: " + restored.getTitle());
 
-        if (serverMode) {
-            int port = Integer.parseInt(System.getenv().getOrDefault("PORT", "8080"));
-            new DocumentHttpServer(manager).start(port);
-        }
     }
 
     private static boolean hasArg(String[] args, String target) {
