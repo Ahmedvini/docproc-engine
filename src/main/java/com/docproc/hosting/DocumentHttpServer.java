@@ -2,6 +2,8 @@ package com.docproc.hosting;
 
 import com.docproc.core.DocumentManager;
 import com.docproc.model.Document;
+import com.docproc.model.Paragraph;
+import com.docproc.model.Section;
 import com.docproc.visitor.SpellCheckVisitor;
 import com.docproc.visitor.WordCountVisitor;
 import com.sun.net.httpserver.HttpExchange;
@@ -11,7 +13,11 @@ import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class DocumentHttpServer {
@@ -26,6 +32,10 @@ public class DocumentHttpServer {
             HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
             server.createContext("/", new RootHandler());
             server.createContext("/health", exchange -> write(exchange, 200, "OK", "text/plain"));
+            server.createContext("/update-title", new UpdateTitleHandler());
+            server.createContext("/update-paragraph", new UpdateParagraphHandler());
+            server.createContext("/add-paragraph", new AddParagraphHandler());
+            server.createContext("/export-html", new ExportHtmlHandler());
             server.createContext("/document", new DocumentHandler());
             server.createContext("/word-count", new WordCountHandler());
             server.createContext("/spell-check", new SpellCheckHandler());
@@ -73,7 +83,7 @@ public class DocumentHttpServer {
                                     </head>
                   <body>
                     <h1>Smart Document Editor</h1>
-                                        <p class="muted">Homepage dashboard with preview and quick metrics.</p>
+                                        <p class="muted">Homepage editor with preview and quick metrics.</p>
 
                                         <div class="grid">
                                             <div class="card">
@@ -93,6 +103,34 @@ public class DocumentHttpServer {
                                         <h3>Document Preview</h3>
                                         <pre>%s</pre>
 
+                                        <div class="grid">
+                                            <div class="card">
+                                                <h3>Edit Title</h3>
+                                                <form method="post" action="/update-title">
+                                                    <input type="text" name="title" value="%s" style="width:100%%;padding:0.5rem;" />
+                                                    <button type="submit" style="margin-top:0.7rem;">Save Title</button>
+                                                </form>
+                                            </div>
+                                            <div class="card">
+                                                <h3>Edit First Paragraph</h3>
+                                                <form method="post" action="/update-paragraph">
+                                                    <textarea name="text" rows="6" style="width:100%%;padding:0.5rem;">%s</textarea>
+                                                    <button type="submit" style="margin-top:0.7rem;">Save Paragraph</button>
+                                                </form>
+                                            </div>
+                                            <div class="card">
+                                                <h3>Add Paragraph</h3>
+                                                <form method="post" action="/add-paragraph">
+                                                    <textarea name="text" rows="6" style="width:100%%;padding:0.5rem;" placeholder="Write new paragraph"></textarea>
+                                                    <button type="submit" style="margin-top:0.7rem;">Add</button>
+                                                </form>
+                                            </div>
+                                        </div>
+
+                                        <p>
+                                            <a href="/export-html">Export HTML Preview</a>
+                                        </p>
+
                                         <h3>Raw Endpoints</h3>
                     <ul>
                                             <li><a href="/health">/health</a></li>
@@ -106,9 +144,93 @@ public class DocumentHttpServer {
                                 escapeHtml(document.getTitle()),
                                 wordCountVisitor.getCount(),
                                 escapeHtml(unknownWords),
-                                escapeHtml(document.render())
+                                escapeHtml(document.render()),
+                                escapeHtml(document.getTitle()),
+                                escapeHtml(firstParagraphText(document))
                         );
             write(exchange, 200, body, "text/html");
+        }
+    }
+
+    private class UpdateTitleHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                write(exchange, 405, "Method Not Allowed", "text/plain");
+                return;
+            }
+            Document document = manager.getCurrentDocument();
+            if (document == null) {
+                write(exchange, 404, "No active document", "text/plain");
+                return;
+            }
+            Map<String, String> form = parseForm(exchange);
+            String title = form.getOrDefault("title", "").trim();
+            if (!title.isBlank()) {
+                document.setTitle(title);
+            }
+            redirectToHome(exchange);
+        }
+    }
+
+    private class UpdateParagraphHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                write(exchange, 405, "Method Not Allowed", "text/plain");
+                return;
+            }
+            Document document = manager.getCurrentDocument();
+            if (document == null) {
+                write(exchange, 404, "No active document", "text/plain");
+                return;
+            }
+            Map<String, String> form = parseForm(exchange);
+            Paragraph paragraph = firstParagraph(document);
+            paragraph.setText(form.getOrDefault("text", ""));
+            redirectToHome(exchange);
+        }
+    }
+
+    private class AddParagraphHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                write(exchange, 405, "Method Not Allowed", "text/plain");
+                return;
+            }
+            Document document = manager.getCurrentDocument();
+            if (document == null) {
+                write(exchange, 404, "No active document", "text/plain");
+                return;
+            }
+            Map<String, String> form = parseForm(exchange);
+            String text = form.getOrDefault("text", "").trim();
+            if (!text.isBlank()) {
+                Paragraph paragraph = new Paragraph(text);
+                Section section = firstSection(document);
+                if (section != null) {
+                    section.add(paragraph);
+                } else {
+                    document.add(paragraph);
+                }
+            }
+            redirectToHome(exchange);
+        }
+    }
+
+    private class ExportHtmlHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            Document document = manager.getCurrentDocument();
+            if (document == null) {
+                write(exchange, 404, "No active document", "text/plain");
+                return;
+            }
+            String html = "<html><body><pre>" + escapeHtml(document.render()) + "</pre></body></html>";
+            java.nio.file.Files.createDirectories(Path.of("exports"));
+            java.nio.file.Files.writeString(Path.of("exports/web-preview.html"), html);
+            redirectToHome(exchange);
         }
     }
 
@@ -162,6 +284,61 @@ public class DocumentHttpServer {
         try (OutputStream output = exchange.getResponseBody()) {
             output.write(bytes);
         }
+    }
+
+    private Map<String, String> parseForm(HttpExchange exchange) throws IOException {
+        String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+        Map<String, String> values = new HashMap<>();
+        if (body.isBlank()) {
+            return values;
+        }
+        for (String pair : body.split("&")) {
+            String[] parts = pair.split("=", 2);
+            String key = URLDecoder.decode(parts[0], StandardCharsets.UTF_8);
+            String value = parts.length > 1 ? URLDecoder.decode(parts[1], StandardCharsets.UTF_8) : "";
+            values.put(key, value);
+        }
+        return values;
+    }
+
+    private void redirectToHome(HttpExchange exchange) throws IOException {
+        exchange.getResponseHeaders().set("Location", "/");
+        exchange.sendResponseHeaders(303, -1);
+        exchange.close();
+    }
+
+    private Section firstSection(Document document) {
+        for (var child : document.getChildren()) {
+            if (child instanceof Section section) {
+                return section;
+            }
+        }
+        return null;
+    }
+
+    private Paragraph firstParagraph(Document document) {
+        for (var child : document.getChildren()) {
+            if (child instanceof Paragraph paragraph) {
+                return paragraph;
+            }
+            for (var nested : child.getChildren()) {
+                if (nested instanceof Paragraph paragraph) {
+                    return paragraph;
+                }
+            }
+        }
+        Section section = firstSection(document);
+        Paragraph paragraph = new Paragraph("");
+        if (section != null) {
+            section.add(paragraph);
+        } else {
+            document.add(paragraph);
+        }
+        return paragraph;
+    }
+
+    private String firstParagraphText(Document document) {
+        return firstParagraph(document).getText();
     }
 
     private String escapeHtml(String value) {

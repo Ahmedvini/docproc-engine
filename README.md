@@ -54,9 +54,13 @@ mvn -DskipTests exec:java -Dexec.args="--server"
 Server endpoints:
 
 - `GET /health`
+- `GET /` (interactive Web UI homepage)
 - `GET /document`
 - `GET /word-count`
 - `GET /spell-check`
+- `POST /update-title`
+- `POST /update-paragraph`
+- `POST /add-paragraph`
 
 Default port is `8080`. In cloud platforms, the app reads the `PORT` environment variable automatically.
 
