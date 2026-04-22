@@ -33,6 +33,19 @@ public class Main {
         TextStyle normal = StyleFlyweightFactory.getInstance().getStyle("Georgia", 12, "black", false, false);
         TextStyle emphasized = StyleFlyweightFactory.getInstance().getStyle("Georgia", 12, "darkblue", true, false);
 
+        DocumentManager manager = DocumentManager.getInstance();
+
+        if (guiMode) {
+            Document guiDocument = new DocumentBuilder(new DefaultDocumentElementFactory())
+                .start("Smart Document Editor")
+                .addSection("New Document")
+                .addParagraph("", normal)
+                .build();
+            manager.setCurrentDocument(guiDocument);
+            SmartDocumentEditorFrame.launch();
+            return;
+        }
+
         Document document = new DocumentBuilder(new DefaultDocumentElementFactory())
             .start("Smart Document Editor")
             .addHeader("Sample Header")
@@ -43,7 +56,6 @@ public class Main {
             .addFooter("Sample Footer")
             .build();
 
-        DocumentManager manager = DocumentManager.getInstance();
         manager.setCurrentDocument(document);
         manager.addObserver(new LivePreviewObserver());
         manager.addObserver(new AutoSaveObserver(manager::getCurrentDocument, Path.of("autosave/latest.txt")));
@@ -88,11 +100,6 @@ public class Main {
         vcs.commit(document, "Added v2 tag");
         Document restored = vcs.checkout(1);
         System.out.println("Restored version title: " + restored.getTitle());
-
-        if (guiMode) {
-            SmartDocumentEditorFrame.launch();
-            return;
-        }
 
         if (serverMode) {
             int port = Integer.parseInt(System.getenv().getOrDefault("PORT", "8080"));

@@ -33,6 +33,7 @@ Generated files:
 ## Bonus Tasks
 
 - GUI (Swing): `SmartDocumentEditorFrame`
+- Enhanced GUI editor: split editor/preview layout, upload `.txt/.md`, spell check, status bar
 - JSON/XML export: implemented in export module
 - Plugin system: `PluginManager` + ServiceLoader plugin (`WordFrequencyPlugin`)
 - Real-time collaboration simulation: `CollaborationSession`
