@@ -9,7 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 MODE="${1:-main}"
-
+echo "Running in mode: $MODE"
 echo ""
 echo "============================================================"
 echo "  Document Processing System"
